@@ -10,6 +10,7 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "npm run -ws typecheck",
+    "test": "npm run -ws test",
     "lint": "npm run -ws lint",
     "format": "npm run -ws format",
     "clean": "npm run -ws clean"
@@ -19,6 +20,7 @@
     "eslint": "^8.57.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "vitest": "^2.0.5"
   }
 }

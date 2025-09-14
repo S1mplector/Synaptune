@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier -w 'src/**/*.ts'",
-    "clean": "rimraf dist || rm -rf dist"
+    "clean": "rimraf dist || rm -rf dist",
+    "test": "echo 'no tests for application yet'"
   },
   "dependencies": {
     "@simbeat/domain": "*"
