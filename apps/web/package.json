@@ -4,16 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo 'web build placeholder'",
-    "typecheck": "echo 'web typecheck placeholder'",
-    "lint": "eslint 'src/**/*.ts' || true",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 5173",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint 'src/**/*.{ts,tsx}' || true",
     "format": "prettier -w 'src/**/*.{ts,tsx,css,html}' || true",
     "clean": "rimraf dist || rm -rf dist"
   },
   "dependencies": {
-    "@simbeat/application": "*"
+    "@simbeat/application": "*",
+    "@simbeat/infrastructure": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "vite": "^5.4.3",
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite-tsconfig-paths": "^4.3.2",
+    "@types/react": "^18.3.4",
+    "@types/react-dom": "^18.3.0"
   }
 }
