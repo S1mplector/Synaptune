@@ -1,10 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { makeCreateSession } from '@simbeat/application';
-import { InMemorySessionRepository } from '@simbeat/infrastructure';
+import { makeCreateSession, makeStartPlayback, makeStopPlayback } from '@simbeat/application';
+import { InMemorySessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
 
 export function App() {
   const sessionRepo = useMemo(() => new InMemorySessionRepository(), []);
   const createSession = useMemo(() => makeCreateSession({ sessionRepo }), [sessionRepo]);
+
+  const audioEngine = useMemo(() => new WebAudioEngine(), []);
+  const startPlayback = useMemo(() => makeStartPlayback(audioEngine), [audioEngine]);
+  const stopPlayback = useMemo(() => makeStopPlayback(audioEngine), [audioEngine]);
 
   const [id, setId] = useState<string>(() => crypto.randomUUID());
   const [label, setLabel] = useState<string>('Focus Session');
@@ -32,7 +36,7 @@ export function App() {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', margin: '2rem auto', maxWidth: 720 }}>
       <h1>SimBeat</h1>
-      <p>Create a binaural beat session via the Application layer.</p>
+      <p>Create a binaural beat session via the Application layer and control playback.</p>
 
       <form onSubmit={onCreate} style={{ display: 'grid', gap: '0.75rem', maxWidth: 480 }}>
         <label>
@@ -64,7 +68,18 @@ export function App() {
             onChange={(e) => setRightHz(parseFloat(e.target.value))}
           />
         </label>
-        <button type="submit">Create Session</button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button type="submit">Create Session</button>
+          <button type="button" onClick={() => startPlayback({ leftHz, rightHz })}>
+            Start Playback
+          </button>
+          <button type="button" onClick={() => stopPlayback()} disabled={!audioEngine.isRunning()}>
+            Stop Playback
+          </button>
+          <span style={{ fontSize: 12, opacity: 0.75 }}>
+            Status: {audioEngine.isRunning() ? 'Running' : 'Stopped'}
+          </span>
+        </div>
       </form>
 
       {error && (
