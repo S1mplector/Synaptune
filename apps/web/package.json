@@ -1,0 +1,19 @@
+{
+  "name": "@simbeat/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'web build placeholder'",
+    "typecheck": "echo 'web typecheck placeholder'",
+    "lint": "eslint 'src/**/*.ts' || true",
+    "format": "prettier -w 'src/**/*.{ts,tsx,css,html}' || true",
+    "clean": "rimraf dist || rm -rf dist"
+  },
+  "dependencies": {
+    "@simbeat/application": "*"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1"
+  }
+}

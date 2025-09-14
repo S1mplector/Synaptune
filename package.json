@@ -1,0 +1,24 @@
+{
+  "name": "simbeat",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Binaural beat simulator web tool (Clean Architecture monorepo)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "typecheck": "npm run -ws typecheck",
+    "lint": "npm run -ws lint",
+    "format": "npm run -ws format",
+    "clean": "npm run -ws clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "prettier": "^3.3.3"
+  }
+}

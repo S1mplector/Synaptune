@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "noEmit": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@simbeat/domain": ["packages/domain/src"],
+      "@simbeat/application": ["packages/application/src"],
+      "@simbeat/infrastructure": ["packages/infrastructure/src"],
+      "@simbeat/web": ["apps/web/src"]
+    }
+  },
+  "include": []
+}
