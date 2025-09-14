@@ -1,6 +1,5 @@
-import { BinauralBeat } from '@simbeat/domain/entities/BinauralBeat';
-import { Frequency } from '@simbeat/domain/value-objects/Frequency';
-import { SessionRepository } from '@simbeat/domain/repositories/SessionRepository';
+import { BinauralBeat, Frequency } from '@simbeat/domain';
+import { SessionRepository } from '@simbeat/domain';
 import { CreateSessionRequest, SessionResponse } from '../dto/SessionDTO';
 
 export interface CreateSessionDeps {

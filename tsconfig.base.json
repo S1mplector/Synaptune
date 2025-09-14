@@ -14,9 +14,13 @@
     "baseUrl": ".",
     "paths": {
       "@simbeat/domain": ["packages/domain/src"],
+      "@simbeat/domain/*": ["packages/domain/src/*"],
       "@simbeat/application": ["packages/application/src"],
+      "@simbeat/application/*": ["packages/application/src/*"],
       "@simbeat/infrastructure": ["packages/infrastructure/src"],
-      "@simbeat/web": ["apps/web/src"]
+      "@simbeat/infrastructure/*": ["packages/infrastructure/src/*"],
+      "@simbeat/web": ["apps/web/src"],
+      "@simbeat/web/*": ["apps/web/src/*"]
     }
   },
   "include": []

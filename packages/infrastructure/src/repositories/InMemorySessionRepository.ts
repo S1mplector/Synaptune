@@ -1,4 +1,4 @@
-import { Session, SessionRepository } from '@simbeat/domain/repositories/SessionRepository';
+import { Session, SessionRepository } from '@simbeat/domain';
 
 export class InMemorySessionRepository implements SessionRepository {
   private store = new Map<string, Session>();
