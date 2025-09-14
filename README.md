@@ -1,6 +1,6 @@
 # Simbeat
 
-A binaural beat simulator web tool, structured as a monorepo using Clean Architecture principles.
+A binaural beat simulator web tool, structured as a monorepo using clean architecture principles.
 
 ## Architecture Overview
 
