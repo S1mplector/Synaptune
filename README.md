@@ -53,9 +53,3 @@ We keep the web app minimal for now. In a later step, we'll scaffold a full Vite
 - Add adapters/implementations in `packages/infrastructure`.
 - Integrate with UI in `apps/web`.
 
-## Contribution Guidelines
-
-- Write pure, deterministic domain logic without side effects.
-- Keep boundaries explicit: define interfaces (ports) in inner layers and implement in outer layers.
-- Prefer small, focused modules and functions.
-- Enforce formatting and linting via provided configs and CI.
