@@ -11,9 +11,19 @@ import {
   makeRetuneKeepingBeat,
   computeLeftRightFromCenterBeat,
 } from '@simbeat/application';
+import {
+  MIN_FREQUENCY_HZ,
+  MAX_FREQUENCY_HZ,
+  MIN_BEAT_FREQUENCY_HZ,
+  MAX_BEAT_FREQUENCY_HZ,
+} from '@simbeat/domain';
 import { LocalStorageSessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
 
 export function App() {
+  // util
+  const clamp = (n: number, min: number, max: number) =>
+    Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
+
   const sessionRepo = useMemo(() => new LocalStorageSessionRepository(), []);
   const createSession = useMemo(() => makeCreateSession({ sessionRepo }), [sessionRepo]);
   const createSessionFromPreset = useMemo(
@@ -45,6 +55,13 @@ export function App() {
     | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    left?: string;
+    right?: string;
+    center?: string;
+    beat?: string;
+    global?: string;
+  }>({});
   const [sessions, setSessions] = useState<
     { id: string; label?: string; leftHz: number; rightHz: number; beatHz: number; createdAt: string }[]
   >([]);
@@ -88,6 +105,59 @@ export function App() {
     } catch {}
   }, [audioEngine, pan]);
 
+  // Persist UI/audio settings to LocalStorage
+  useEffect(() => {
+    const key = 'simbeat:ui-settings:v1';
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const s = JSON.parse(saved) as any;
+        if (typeof s.volume === 'number') setVolume(clamp(s.volume, 0, 1));
+        if (typeof s.pan === 'number') setPan(clamp(s.pan, -1, 1));
+        if (typeof s.lockBeat === 'boolean') setLockBeat(s.lockBeat);
+        if (typeof s.centerHz === 'number') setCenterHz(clamp(s.centerHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ));
+        if (typeof s.beatHz === 'number') setBeatHz(clamp(s.beatHz, MIN_BEAT_FREQUENCY_HZ, MAX_BEAT_FREQUENCY_HZ));
+        if (typeof s.leftHz === 'number') setLeftHz(clamp(s.leftHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ));
+        if (typeof s.rightHz === 'number') setRightHz(clamp(s.rightHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const key = 'simbeat:ui-settings:v1';
+    try {
+      const payload = {
+        volume,
+        pan,
+        lockBeat,
+        centerHz,
+        beatHz,
+        leftHz,
+        rightHz,
+      };
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch {}
+  }, [volume, pan, lockBeat, centerHz, beatHz, leftHz, rightHz]);
+
+  // Stop audio on unmount and when page is hidden
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) {
+        try {
+          stopPlayback();
+        } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      try {
+        stopPlayback();
+      } catch {}
+    };
+  }, [stopPlayback]);
+
   // When Lock Beat is enabled and center/beat change, compute left/right and retune
   useEffect(() => {
     if (!lockBeat) return;
@@ -100,11 +170,48 @@ export function App() {
     }
   }, [lockBeat, centerHz, beatHz, retuneKeepingBeat]);
 
+  // Validate inputs and set inline messages
+  useEffect(() => {
+    const errs: typeof fieldErrors = {};
+    if (!lockBeat) {
+      // Free mode: check beat range
+      const beat = Math.abs(leftHz - rightHz);
+      if (beat < MIN_BEAT_FREQUENCY_HZ || beat > MAX_BEAT_FREQUENCY_HZ) {
+        errs.global = `Beat must be between ${MIN_BEAT_FREQUENCY_HZ} and ${MAX_BEAT_FREQUENCY_HZ} Hz (currently ${beat.toFixed(
+          2,
+        )} Hz).`;
+      }
+      if (leftHz < MIN_FREQUENCY_HZ || leftHz > MAX_FREQUENCY_HZ) {
+        errs.left = `Left must be between ${MIN_FREQUENCY_HZ}-${MAX_FREQUENCY_HZ} Hz.`;
+      }
+      if (rightHz < MIN_FREQUENCY_HZ || rightHz > MAX_FREQUENCY_HZ) {
+        errs.right = `Right must be between ${MIN_FREQUENCY_HZ}-${MAX_FREQUENCY_HZ} Hz.`;
+      }
+    } else {
+      // Lock-beat mode: validate center/beat and derived left/right
+      if (centerHz < MIN_FREQUENCY_HZ || centerHz > MAX_FREQUENCY_HZ) {
+        errs.center = `Center must be between ${MIN_FREQUENCY_HZ}-${MAX_FREQUENCY_HZ} Hz.`;
+      }
+      if (beatHz < MIN_BEAT_FREQUENCY_HZ || beatHz > MAX_BEAT_FREQUENCY_HZ) {
+        errs.beat = `Beat must be between ${MIN_BEAT_FREQUENCY_HZ}-${MAX_BEAT_FREQUENCY_HZ} Hz.`;
+      }
+      const l = centerHz - beatHz / 2;
+      const r = centerHz + beatHz / 2;
+      if (l < MIN_FREQUENCY_HZ || l > MAX_FREQUENCY_HZ || r < MIN_FREQUENCY_HZ || r > MAX_FREQUENCY_HZ) {
+        errs.global = `Derived frequencies must be within ${MIN_FREQUENCY_HZ}-${MAX_FREQUENCY_HZ} Hz.`;
+      }
+    }
+    setFieldErrors(errs);
+  }, [lockBeat, leftHz, rightHz, centerHz, beatHz]);
+
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      const res = await createSession({ id, label, leftHz, rightHz });
+      // Validate/clamp before creating
+      const l = clamp(leftHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
+      const r = clamp(rightHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
+      const res = await createSession({ id, label, leftHz: l, rightHz: r });
       setResult(res);
       setId(crypto.randomUUID());
       setSessions(await listSessions());
@@ -158,31 +265,39 @@ export function App() {
           <div>Left Frequency (Hz)</div>
           <input
             type="number"
-            min={1}
+            min={MIN_FREQUENCY_HZ}
+            max={MAX_FREQUENCY_HZ}
             step={0.1}
             value={leftHz}
             onChange={(e) => {
-              const v = parseFloat(e.target.value);
+              const v = clamp(parseFloat(e.target.value), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
               setLeftHz(v);
               if (running) audioEngine.updateFrequencies(v, rightHz);
             }}
             disabled={lockBeat}
           />
+          {fieldErrors.left && (
+            <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.left}</div>
+          )}
         </label>
         <label>
           <div>Right Frequency (Hz)</div>
           <input
             type="number"
-            min={1}
+            min={MIN_FREQUENCY_HZ}
+            max={MAX_FREQUENCY_HZ}
             step={0.1}
             value={rightHz}
             onChange={(e) => {
-              const v = parseFloat(e.target.value);
+              const v = clamp(parseFloat(e.target.value), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
               setRightHz(v);
               if (running) audioEngine.updateFrequencies(leftHz, v);
             }}
             disabled={lockBeat}
           />
+          {fieldErrors.right && (
+            <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.right}</div>
+          )}
         </label>
         <label>
           <div>
@@ -210,21 +325,29 @@ export function App() {
               <div>Center Frequency (Hz)</div>
               <input
                 type="number"
-                min={1}
+                min={MIN_FREQUENCY_HZ}
+                max={MAX_FREQUENCY_HZ}
                 step={0.1}
                 value={centerHz}
                 onChange={(e) => setCenterHz(parseFloat(e.target.value))}
               />
+              {fieldErrors.center && (
+                <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.center}</div>
+              )}
             </label>
             <label>
               <div>Beat Frequency (Hz)</div>
               <input
                 type="number"
-                min={0.1}
+                min={MIN_BEAT_FREQUENCY_HZ}
+                max={MAX_BEAT_FREQUENCY_HZ}
                 step={0.1}
                 value={beatHz}
                 onChange={(e) => setBeatHz(parseFloat(e.target.value))}
               />
+              {fieldErrors.beat && (
+                <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.beat}</div>
+              )}
             </label>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
               Resulting: Left {leftHz.toFixed(2)} Hz • Right {rightHz.toFixed(2)} Hz
@@ -253,8 +376,13 @@ export function App() {
             onChange={(e) => setPan(parseFloat(e.target.value))}
           />
         </label>
+        {fieldErrors.global && (
+          <div style={{ color: 'crimson' }}>{fieldErrors.global}</div>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button type="submit">Create Session</button>
+          <button type="submit" disabled={Boolean(fieldErrors.global) || Boolean(fieldErrors.left) || Boolean(fieldErrors.right)}>
+            Create Session
+          </button>
           <button type="button" onClick={() => startPlayback({ leftHz, rightHz })}>
             Start Playback
           </button>

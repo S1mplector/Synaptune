@@ -1,6 +1,6 @@
 # Synaptune
 
-A binaural beat simulator web tool, structured as a monorepo using clean architecture principles.
+A binaural beat simulator web tool, structured as a monorepo.
 
 ## Architecture Overview
 
