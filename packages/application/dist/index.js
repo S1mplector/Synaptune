@@ -3,3 +3,6 @@ export * from './dto/SessionDTO';
 export * from './ports/AudioEngine';
 export * from './use-cases/StartPlayback';
 export * from './use-cases/StopPlayback';
+export * from './use-cases/ListPresets';
+export * from './use-cases/CreateSessionFromPreset';
+export * from './use-cases/ListSessions';

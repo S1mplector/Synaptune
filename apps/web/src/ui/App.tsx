@@ -1,10 +1,22 @@
-import React, { useMemo, useState } from 'react';
-import { makeCreateSession, makeStartPlayback, makeStopPlayback } from '@simbeat/application';
-import { InMemorySessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  makeCreateSession,
+  makeStartPlayback,
+  makeStopPlayback,
+  listPresets,
+  makeCreateSessionFromPreset,
+  makeListSessions,
+} from '@simbeat/application';
+import { LocalStorageSessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
 
 export function App() {
-  const sessionRepo = useMemo(() => new InMemorySessionRepository(), []);
+  const sessionRepo = useMemo(() => new LocalStorageSessionRepository(), []);
   const createSession = useMemo(() => makeCreateSession({ sessionRepo }), [sessionRepo]);
+  const createSessionFromPreset = useMemo(
+    () => makeCreateSessionFromPreset({ sessionRepo }),
+    [sessionRepo]
+  );
+  const listSessions = useMemo(() => makeListSessions({ sessionRepo }), [sessionRepo]);
 
   const audioEngine = useMemo(() => new WebAudioEngine(), []);
   const startPlayback = useMemo(() => makeStartPlayback(audioEngine), [audioEngine]);
@@ -20,6 +32,17 @@ export function App() {
     | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<
+    { id: string; label?: string; leftHz: number; rightHz: number; beatHz: number; createdAt: string }[]
+  >([]);
+
+  const presets = useMemo(() => listPresets(), []);
+  const [presetName, setPresetName] = useState<string>(presets[0]?.name ?? '');
+
+  useEffect(() => {
+    // Load persisted sessions on mount
+    listSessions().then(setSessions).catch(() => {});
+  }, [listSessions]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +51,18 @@ export function App() {
       const res = await createSession({ id, label, leftHz, rightHz });
       setResult(res);
       setId(crypto.randomUUID());
+      setSessions(await listSessions());
+    } catch (err: any) {
+      setError(err?.message ?? 'Unknown error');
+    }
+  }
+
+  async function onCreateFromPreset() {
+    setError(null);
+    try {
+      const res = await createSessionFromPreset({ id: crypto.randomUUID(), presetName });
+      setResult(res);
+      setSessions(await listSessions());
     } catch (err: any) {
       setError(err?.message ?? 'Unknown error');
     }
@@ -38,7 +73,7 @@ export function App() {
       <h1>SimBeat</h1>
       <p>Create a binaural beat session via the Application layer and control playback.</p>
 
-      <form onSubmit={onCreate} style={{ display: 'grid', gap: '0.75rem', maxWidth: 480 }}>
+      <form onSubmit={onCreate} style={{ display: 'grid', gap: '0.75rem', maxWidth: 640 }}>
         <label>
           <div>Session Label</div>
           <input
@@ -47,6 +82,21 @@ export function App() {
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. Focus Session"
           />
+        </label>
+        <label>
+          <div>Preset</div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <select value={presetName} onChange={(e) => setPresetName(e.target.value)}>
+              {presets.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name} — {p.leftHz} / {p.rightHz} Hz
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={onCreateFromPreset}>
+              Create From Preset
+            </button>
+          </div>
         </label>
         <label>
           <div>Left Frequency (Hz)</div>
@@ -111,6 +161,34 @@ export function App() {
               <strong>Created At:</strong> {new Date(result.createdAt).toLocaleString()}
             </li>
           </ul>
+        </div>
+      )}
+
+      {sessions.length > 0 && (
+        <div style={{ marginTop: '1rem' }}>
+          <h2>Sessions</h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Label</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Left</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Right</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Beat</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ padding: '0.25rem 0' }}>{s.label || '—'}</td>
+                  <td>{s.leftHz} Hz</td>
+                  <td>{s.rightHz} Hz</td>
+                  <td>{s.beatHz} Hz</td>
+                  <td>{new Date(s.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

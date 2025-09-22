@@ -1,3 +1,5 @@
+export const MIN_BEAT_FREQUENCY_HZ = 0.5;
+export const MAX_BEAT_FREQUENCY_HZ = 40;
 export class BinauralBeat {
     left;
     right;
@@ -8,8 +10,10 @@ export class BinauralBeat {
         this.createdAt = props.createdAt ?? new Date();
     }
     static create(props) {
-        if (props.left.hz <= 0 || props.right.hz <= 0) {
-            throw new Error('Frequencies must be positive.');
+        // Frequency.fromHz already validates human-audible range; we rely on that upstream.
+        const beatHz = Math.abs(props.left.hz - props.right.hz);
+        if (beatHz < MIN_BEAT_FREQUENCY_HZ || beatHz > MAX_BEAT_FREQUENCY_HZ) {
+            throw new Error(`Beat frequency must be within ${MIN_BEAT_FREQUENCY_HZ}-${MAX_BEAT_FREQUENCY_HZ} Hz (received ${beatHz}).`);
         }
         return new BinauralBeat(props);
     }
