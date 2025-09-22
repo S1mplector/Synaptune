@@ -18,6 +18,12 @@ import {
   MAX_BEAT_FREQUENCY_HZ,
 } from '@simbeat/domain';
 import { LocalStorageSessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
+import './styles.css';
+import { PlaybackBar } from './components/PlaybackBar';
+import { ToneControls } from './components/ToneControls';
+import { AudioControls } from './components/AudioControls';
+import { PresetsPanel } from './components/PresetsPanel';
+import { SessionsPanel } from './components/SessionsPanel';
 
 export function App() {
   // util
@@ -232,177 +238,97 @@ export function App() {
   }
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', margin: '2rem auto', maxWidth: 720 }}>
-      <h1>SimBeat</h1>
-      <p>Create a binaural beat session via the Application layer and control playback.</p>
+    <div className="container">
+      <div className="header">
+        <h1>Synaptune</h1>
+        <span className="muted">Binaural beat simulator</span>
+      </div>
 
-      <form onSubmit={onCreate} style={{ display: 'grid', gap: '0.75rem', maxWidth: 640 }}>
-        <label>
-          <div>Session Label</div>
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g. Focus Session"
-          />
-        </label>
-        <label>
-          <div>Preset</div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <select value={presetName} onChange={(e) => setPresetName(e.target.value)}>
-              {presets.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name} — {p.leftHz} / {p.rightHz} Hz
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={onCreateFromPreset}>
-              Create From Preset
-            </button>
-          </div>
-        </label>
-        <label>
-          <div>Left Frequency (Hz)</div>
-          <input
-            type="number"
-            min={MIN_FREQUENCY_HZ}
-            max={MAX_FREQUENCY_HZ}
-            step={0.1}
-            value={leftHz}
-            onChange={(e) => {
-              const v = clamp(parseFloat(e.target.value), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
-              setLeftHz(v);
-              if (running) audioEngine.updateFrequencies(v, rightHz);
-            }}
-            disabled={lockBeat}
-          />
-          {fieldErrors.left && (
-            <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.left}</div>
-          )}
-        </label>
-        <label>
-          <div>Right Frequency (Hz)</div>
-          <input
-            type="number"
-            min={MIN_FREQUENCY_HZ}
-            max={MAX_FREQUENCY_HZ}
-            step={0.1}
-            value={rightHz}
-            onChange={(e) => {
-              const v = clamp(parseFloat(e.target.value), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
-              setRightHz(v);
-              if (running) audioEngine.updateFrequencies(leftHz, v);
-            }}
-            disabled={lockBeat}
-          />
-          {fieldErrors.right && (
-            <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.right}</div>
-          )}
-        </label>
-        <label>
-          <div>
+      <form onSubmit={onCreate} className="col">
+        <PresetsPanel
+          presets={presets}
+          selectedName={presetName}
+          onSelect={setPresetName}
+          onCreateFromPreset={onCreateFromPreset}
+        />
+
+        <div className="panel col">
+          <label>
+            <div>Session Label</div>
             <input
-              type="checkbox"
-              checked={lockBeat}
-              onChange={(e) => {
-                const next = e.target.checked;
-                setLockBeat(next);
-                if (next) {
-                  // initialize center/beat from current freqs
-                  const c = (leftHz + rightHz) / 2;
-                  const b = Math.abs(leftHz - rightHz);
-                  setCenterHz(c);
-                  setBeatHz(b);
-                }
-              }}
-            />{' '}
-            Lock Beat (control via Center & Beat)
-          </div>
-        </label>
-        {lockBeat && (
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
-            <label>
-              <div>Center Frequency (Hz)</div>
-              <input
-                type="number"
-                min={MIN_FREQUENCY_HZ}
-                max={MAX_FREQUENCY_HZ}
-                step={0.1}
-                value={centerHz}
-                onChange={(e) => setCenterHz(parseFloat(e.target.value))}
-              />
-              {fieldErrors.center && (
-                <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.center}</div>
-              )}
-            </label>
-            <label>
-              <div>Beat Frequency (Hz)</div>
-              <input
-                type="number"
-                min={MIN_BEAT_FREQUENCY_HZ}
-                max={MAX_BEAT_FREQUENCY_HZ}
-                step={0.1}
-                value={beatHz}
-                onChange={(e) => setBeatHz(parseFloat(e.target.value))}
-              />
-              {fieldErrors.beat && (
-                <div style={{ color: 'crimson', fontSize: 12 }}>{fieldErrors.beat}</div>
-              )}
-            </label>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Resulting: Left {leftHz.toFixed(2)} Hz • Right {rightHz.toFixed(2)} Hz
-            </div>
-          </div>
-        )}
-        <label>
-          <div>Master Volume: {(volume * 100).toFixed(0)}%</div>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-          />
-        </label>
-        <label>
-          <div>Stereo Pan: {pan < 0 ? `${Math.round(Math.abs(pan) * 100)}% L` : pan > 0 ? `${Math.round(pan * 100)}% R` : 'Center'}</div>
-          <input
-            type="range"
-            min={-1}
-            max={1}
-            step={0.01}
-            value={pan}
-            onChange={(e) => setPan(parseFloat(e.target.value))}
-          />
-        </label>
-        {fieldErrors.global && (
-          <div style={{ color: 'crimson' }}>{fieldErrors.global}</div>
-        )}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Focus Session"
+            />
+          </label>
+        </div>
+
+        <ToneControls
+          lockBeat={lockBeat}
+          leftHz={leftHz}
+          rightHz={rightHz}
+          centerHz={centerHz}
+          beatHz={beatHz}
+          minFreq={MIN_FREQUENCY_HZ}
+          maxFreq={MAX_FREQUENCY_HZ}
+          minBeat={MIN_BEAT_FREQUENCY_HZ}
+          maxBeat={MAX_BEAT_FREQUENCY_HZ}
+          errors={fieldErrors}
+          onToggleLockBeat={(next) => {
+            setLockBeat(next);
+            if (next) {
+              const c = (leftHz + rightHz) / 2;
+              const b = Math.abs(leftHz - rightHz);
+              setCenterHz(c);
+              setBeatHz(b);
+            }
+          }}
+          onLeftChange={(v) => {
+            const next = clamp(v, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
+            setLeftHz(next);
+            if (running) audioEngine.updateFrequencies(next, rightHz);
+          }}
+          onRightChange={(v) => {
+            const next = clamp(v, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
+            setRightHz(next);
+            if (running) audioEngine.updateFrequencies(leftHz, next);
+          }}
+          onCenterChange={(v) => setCenterHz(clamp(v, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ))}
+          onBeatChange={(v) => setBeatHz(clamp(v, MIN_BEAT_FREQUENCY_HZ, MAX_BEAT_FREQUENCY_HZ))}
+          running={running}
+        />
+
+        <AudioControls
+          volume={volume}
+          pan={pan}
+          onVolume={(v) => setVolume(v)}
+          onPan={(v) => setPan(v)}
+        />
+
+        {fieldErrors.global && <div className="panel error-text">{fieldErrors.global}</div>}
+
+        <PlaybackBar
+          running={running}
+          onStart={() => startPlayback({ leftHz, rightHz })}
+          onStop={() => stopPlayback()}
+        />
+
+        <div className="panel col">
           <button type="submit" disabled={Boolean(fieldErrors.global) || Boolean(fieldErrors.left) || Boolean(fieldErrors.right)}>
             Create Session
           </button>
-          <button type="button" onClick={() => startPlayback({ leftHz, rightHz })}>
-            Start Playback
-          </button>
-          <button type="button" onClick={() => stopPlayback()} disabled={!running}>
-            Stop Playback
-          </button>
-          <span style={{ fontSize: 12, opacity: 0.75 }}>
-            Status: {running ? 'Running' : 'Stopped'}
-          </span>
         </div>
       </form>
 
       {error && (
-        <div style={{ marginTop: '1rem', color: 'crimson' }}>
-          <strong>Error:</strong> {error}
+        <div className="panel" style={{ borderColor: 'var(--error)' }}>
+          <strong style={{ color: 'var(--error)' }}>Error:</strong> {error}
         </div>
       )}
 
       {result && (
-        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #ccc', borderRadius: 8 }}>
+        <div className="panel">
           <h2>Session Created</h2>
           <ul>
             <li>
@@ -427,60 +353,21 @@ export function App() {
         </div>
       )}
 
-      {sessions.length > 0 && (
-        <div style={{ marginTop: '1rem' }}>
-          <h2>Sessions</h2>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={async () => {
-                await clearSessions();
-                setSessions(await listSessions());
-              }}
-            >
-              Clear All
-            </button>
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Label</th>
-                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Left</th>
-                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Right</th>
-                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Beat</th>
-                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Created</th>
-                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ padding: '0.25rem 0' }}>{s.label || '—'}</td>
-                  <td>{s.leftHz} Hz</td>
-                  <td>{s.rightHz} Hz</td>
-                  <td>{s.beatHz} Hz</td>
-                  <td>{new Date(s.createdAt).toLocaleString()}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await deleteSession(s.id);
-                        setSessions(await listSessions());
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <SessionsPanel
+        sessions={sessions}
+        onDelete={async (id) => {
+          await deleteSession(id);
+          setSessions(await listSessions());
+        }}
+        onClear={async () => {
+          await clearSessions();
+          setSessions(await listSessions());
+        }}
+      />
 
-      <footer style={{ marginTop: '2rem', opacity: 0.7 }}>
-        <small>Clean Architecture: Web → Application → Domain • InMemory repo in Infrastructure</small>
-      </footer>
+      <div className="muted" style={{ marginTop: '1rem' }}>
+        Clean Architecture: Web → Application → Domain
+      </div>
     </div>
   );
 }
