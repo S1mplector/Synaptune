@@ -8,6 +8,8 @@ import {
   makeListSessions,
   makeDeleteSession,
   makeClearSessions,
+  makeRetuneKeepingBeat,
+  computeLeftRightFromCenterBeat,
 } from '@simbeat/application';
 import { LocalStorageSessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
 
@@ -28,11 +30,15 @@ export function App() {
   const [volume, setVolume] = useState<number>(() => 0.5);
   const [pan, setPan] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(false);
+  const retuneKeepingBeat = useMemo(() => makeRetuneKeepingBeat(audioEngine), [audioEngine]);
 
   const [id, setId] = useState<string>(() => crypto.randomUUID());
   const [label, setLabel] = useState<string>('Focus Session');
   const [leftHz, setLeftHz] = useState<number>(220);
   const [rightHz, setRightHz] = useState<number>(226);
+  const [lockBeat, setLockBeat] = useState<boolean>(false);
+  const [centerHz, setCenterHz] = useState<number>(() => (220 + 226) / 2);
+  const [beatHz, setBeatHz] = useState<number>(() => Math.abs(220 - 226));
 
   const [result, setResult] = useState<
     | { id: string; label?: string; leftHz: number; rightHz: number; beatHz: number; createdAt: string }
@@ -81,6 +87,18 @@ export function App() {
       audioEngine.setPan(pan);
     } catch {}
   }, [audioEngine, pan]);
+
+  // When Lock Beat is enabled and center/beat change, compute left/right and retune
+  useEffect(() => {
+    if (!lockBeat) return;
+    try {
+      const { leftHz: l, rightHz: r } = retuneKeepingBeat({ centerHz, beatHz });
+      setLeftHz(l);
+      setRightHz(r);
+    } catch (e) {
+      // invalid ranges; ignore for now
+    }
+  }, [lockBeat, centerHz, beatHz, retuneKeepingBeat]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -148,6 +166,7 @@ export function App() {
               setLeftHz(v);
               if (running) audioEngine.updateFrequencies(v, rightHz);
             }}
+            disabled={lockBeat}
           />
         </label>
         <label>
@@ -162,8 +181,56 @@ export function App() {
               setRightHz(v);
               if (running) audioEngine.updateFrequencies(leftHz, v);
             }}
+            disabled={lockBeat}
           />
         </label>
+        <label>
+          <div>
+            <input
+              type="checkbox"
+              checked={lockBeat}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setLockBeat(next);
+                if (next) {
+                  // initialize center/beat from current freqs
+                  const c = (leftHz + rightHz) / 2;
+                  const b = Math.abs(leftHz - rightHz);
+                  setCenterHz(c);
+                  setBeatHz(b);
+                }
+              }}
+            />{' '}
+            Lock Beat (control via Center & Beat)
+          </div>
+        </label>
+        {lockBeat && (
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <label>
+              <div>Center Frequency (Hz)</div>
+              <input
+                type="number"
+                min={1}
+                step={0.1}
+                value={centerHz}
+                onChange={(e) => setCenterHz(parseFloat(e.target.value))}
+              />
+            </label>
+            <label>
+              <div>Beat Frequency (Hz)</div>
+              <input
+                type="number"
+                min={0.1}
+                step={0.1}
+                value={beatHz}
+                onChange={(e) => setBeatHz(parseFloat(e.target.value))}
+              />
+            </label>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>
+              Resulting: Left {leftHz.toFixed(2)} Hz • Right {rightHz.toFixed(2)} Hz
+            </div>
+          </div>
+        )}
         <label>
           <div>Master Volume: {(volume * 100).toFixed(0)}%</div>
           <input
