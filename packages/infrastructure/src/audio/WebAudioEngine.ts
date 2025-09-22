@@ -8,8 +8,20 @@ export class WebAudioEngine implements AudioEngine {
   private rightGain?: GainNode;
   private merger?: ChannelMergerNode;
   private masterGain?: GainNode;
+  private panner?: StereoPannerNode;
   private running = false;
   private volume = 0.5; // 0..1
+  private pan = 0; // -1..1 (left..right)
+  private listeners = new Set<(state: { running: boolean; volume: number; pan: number }) => void>();
+
+  private notify() {
+    const snapshot = { running: this.running, volume: this.volume, pan: this.pan };
+    this.listeners.forEach((fn) => {
+      try {
+        fn(snapshot);
+      } catch {}
+    });
+  }
 
   isRunning(): boolean {
     return this.running;
@@ -51,7 +63,8 @@ export class WebAudioEngine implements AudioEngine {
 
     // Master volume
     this.masterGain = new GainNode(ctx, { gain: 0 });
-    this.merger.connect(this.masterGain).connect(ctx.destination);
+    this.panner = new StereoPannerNode(ctx, { pan: this.pan });
+    this.merger.connect(this.masterGain).connect(this.panner).connect(ctx.destination);
 
     this.leftOsc.start();
     this.rightOsc.start();
@@ -64,6 +77,7 @@ export class WebAudioEngine implements AudioEngine {
     this.masterGain.gain.linearRampToValueAtTime(target, now + 0.05);
 
     this.running = true;
+    this.notify();
   }
 
   async stop(): Promise<void> {
@@ -91,6 +105,7 @@ export class WebAudioEngine implements AudioEngine {
       if (this.rightGain) this.rightGain.disconnect();
       if (this.merger) this.merger.disconnect();
       if (this.masterGain) this.masterGain.disconnect();
+      if (this.panner) this.panner.disconnect();
     } catch {
       // ignore cleanup errors
     }
@@ -101,8 +116,10 @@ export class WebAudioEngine implements AudioEngine {
     this.rightGain = undefined;
     this.merger = undefined;
     this.masterGain = undefined;
+    this.panner = undefined;
 
     this.running = false;
+    this.notify();
   }
 
   setVolume(volume: number): void {
@@ -113,9 +130,52 @@ export class WebAudioEngine implements AudioEngine {
       this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
       this.masterGain.gain.linearRampToValueAtTime(this.volume, now + 0.05);
     }
+    this.notify();
   }
 
   getVolume(): number {
     return this.volume;
+  }
+
+  updateFrequencies(leftHz: number, rightHz: number): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    if (this.leftOsc) {
+      this.leftOsc.frequency.cancelScheduledValues(now);
+      this.leftOsc.frequency.setValueAtTime(this.leftOsc.frequency.value, now);
+      this.leftOsc.frequency.linearRampToValueAtTime(leftHz, now + 0.05);
+    }
+    if (this.rightOsc) {
+      this.rightOsc.frequency.cancelScheduledValues(now);
+      this.rightOsc.frequency.setValueAtTime(this.rightOsc.frequency.value, now);
+      this.rightOsc.frequency.linearRampToValueAtTime(rightHz, now + 0.05);
+    }
+  }
+
+  subscribe(listener: (state: { running: boolean; volume: number; pan: number }) => void): () => void {
+    this.listeners.add(listener);
+    // push initial
+    try {
+      listener({ running: this.running, volume: this.volume, pan: this.pan });
+    } catch {}
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  setPan(pan: number): void {
+    this.pan = Math.max(-1, Math.min(1, pan));
+    if (this.panner && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.panner.pan.cancelScheduledValues(now);
+      this.panner.pan.setValueAtTime(this.panner.pan.value, now);
+      this.panner.pan.linearRampToValueAtTime(this.pan, now + 0.05);
+    }
+    this.notify();
+  }
+
+  getPan(): number {
+    return this.pan;
   }
 }

@@ -49,4 +49,20 @@ export class LocalStorageSessionRepository {
     async list() {
         return this.read();
     }
+    async delete(id) {
+        const list = this.read();
+        const next = list.filter((s) => s.id !== id);
+        this.write(next);
+    }
+    async clear() {
+        const s = this.storage;
+        if (!s)
+            return;
+        try {
+            s.removeItem(KEY);
+        }
+        catch {
+            // ignore
+        }
+    }
 }

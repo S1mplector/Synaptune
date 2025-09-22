@@ -6,6 +6,8 @@ import {
   listPresets,
   makeCreateSessionFromPreset,
   makeListSessions,
+  makeDeleteSession,
+  makeClearSessions,
 } from '@simbeat/application';
 import { LocalStorageSessionRepository, WebAudioEngine } from '@simbeat/infrastructure';
 
@@ -17,11 +19,15 @@ export function App() {
     [sessionRepo]
   );
   const listSessions = useMemo(() => makeListSessions({ sessionRepo }), [sessionRepo]);
+  const deleteSession = useMemo(() => makeDeleteSession({ sessionRepo }), [sessionRepo]);
+  const clearSessions = useMemo(() => makeClearSessions({ sessionRepo }), [sessionRepo]);
 
   const audioEngine = useMemo(() => new WebAudioEngine(), []);
   const startPlayback = useMemo(() => makeStartPlayback(audioEngine), [audioEngine]);
   const stopPlayback = useMemo(() => makeStopPlayback(audioEngine), [audioEngine]);
   const [volume, setVolume] = useState<number>(() => 0.5);
+  const [pan, setPan] = useState<number>(0);
+  const [running, setRunning] = useState<boolean>(false);
 
   const [id, setId] = useState<string>(() => crypto.randomUUID());
   const [label, setLabel] = useState<string>('Focus Session');
@@ -46,10 +52,22 @@ export function App() {
   }, [listSessions]);
 
   useEffect(() => {
-    // Initialize and keep engine volume in sync
+    // Initialize and subscribe to engine state
     try {
       setVolume(audioEngine.getVolume());
+      setPan(audioEngine.getPan());
+      setRunning(audioEngine.isRunning());
     } catch {}
+    const unsub = audioEngine.subscribe((state) => {
+      setRunning(state.running);
+      setVolume(state.volume);
+      setPan(state.pan);
+    });
+    return () => {
+      try {
+        unsub();
+      } catch {}
+    };
   }, [audioEngine]);
 
   useEffect(() => {
@@ -57,6 +75,12 @@ export function App() {
       audioEngine.setVolume(volume);
     } catch {}
   }, [audioEngine, volume]);
+
+  useEffect(() => {
+    try {
+      audioEngine.setPan(pan);
+    } catch {}
+  }, [audioEngine, pan]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -119,7 +143,11 @@ export function App() {
             min={1}
             step={0.1}
             value={leftHz}
-            onChange={(e) => setLeftHz(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setLeftHz(v);
+              if (running) audioEngine.updateFrequencies(v, rightHz);
+            }}
           />
         </label>
         <label>
@@ -129,7 +157,11 @@ export function App() {
             min={1}
             step={0.1}
             value={rightHz}
-            onChange={(e) => setRightHz(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setRightHz(v);
+              if (running) audioEngine.updateFrequencies(leftHz, v);
+            }}
           />
         </label>
         <label>
@@ -143,16 +175,27 @@ export function App() {
             onChange={(e) => setVolume(parseFloat(e.target.value))}
           />
         </label>
+        <label>
+          <div>Stereo Pan: {pan < 0 ? `${Math.round(Math.abs(pan) * 100)}% L` : pan > 0 ? `${Math.round(pan * 100)}% R` : 'Center'}</div>
+          <input
+            type="range"
+            min={-1}
+            max={1}
+            step={0.01}
+            value={pan}
+            onChange={(e) => setPan(parseFloat(e.target.value))}
+          />
+        </label>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button type="submit">Create Session</button>
           <button type="button" onClick={() => startPlayback({ leftHz, rightHz })}>
             Start Playback
           </button>
-          <button type="button" onClick={() => stopPlayback()} disabled={!audioEngine.isRunning()}>
+          <button type="button" onClick={() => stopPlayback()} disabled={!running}>
             Stop Playback
           </button>
           <span style={{ fontSize: 12, opacity: 0.75 }}>
-            Status: {audioEngine.isRunning() ? 'Running' : 'Stopped'}
+            Status: {running ? 'Running' : 'Stopped'}
           </span>
         </div>
       </form>
@@ -192,6 +235,17 @@ export function App() {
       {sessions.length > 0 && (
         <div style={{ marginTop: '1rem' }}>
           <h2>Sessions</h2>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={async () => {
+                await clearSessions();
+                setSessions(await listSessions());
+              }}
+            >
+              Clear All
+            </button>
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -200,6 +254,7 @@ export function App() {
                 <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Right</th>
                 <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Beat</th>
                 <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Created</th>
+                <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -210,6 +265,17 @@ export function App() {
                   <td>{s.rightHz} Hz</td>
                   <td>{s.beatHz} Hz</td>
                   <td>{new Date(s.createdAt).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await deleteSession(s.id);
+                        setSessions(await listSessions());
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

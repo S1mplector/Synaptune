@@ -50,4 +50,20 @@ export class LocalStorageSessionRepository implements SessionRepository {
   async list(): Promise<Session[]> {
     return this.read();
   }
+
+  async delete(id: string): Promise<void> {
+    const list = this.read();
+    const next = list.filter((s) => s.id !== id);
+    this.write(next);
+  }
+
+  async clear(): Promise<void> {
+    const s = this.storage;
+    if (!s) return;
+    try {
+      s.removeItem(KEY);
+    } catch {
+      // ignore
+    }
+  }
 }

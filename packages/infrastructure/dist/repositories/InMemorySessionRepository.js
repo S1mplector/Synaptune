@@ -9,4 +9,10 @@ export class InMemorySessionRepository {
     async list() {
         return Array.from(this.store.values());
     }
+    async delete(id) {
+        this.store.delete(id);
+    }
+    async clear() {
+        this.store.clear();
+    }
 }

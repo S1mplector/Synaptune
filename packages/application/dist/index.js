@@ -6,3 +6,5 @@ export * from './use-cases/StopPlayback';
 export * from './use-cases/ListPresets';
 export * from './use-cases/CreateSessionFromPreset';
 export * from './use-cases/ListSessions';
+export * from './use-cases/DeleteSession';
+export * from './use-cases/ClearSessions';

@@ -14,4 +14,12 @@ export class InMemorySessionRepository implements SessionRepository {
   async list(): Promise<Session[]> {
     return Array.from(this.store.values());
   }
+
+  async delete(id: string): Promise<void> {
+    this.store.delete(id);
+  }
+
+  async clear(): Promise<void> {
+    this.store.clear();
+  }
 }
