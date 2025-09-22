@@ -7,7 +7,9 @@ export class WebAudioEngine implements AudioEngine {
   private leftGain?: GainNode;
   private rightGain?: GainNode;
   private merger?: ChannelMergerNode;
+  private masterGain?: GainNode;
   private running = false;
+  private volume = 0.5; // 0..1
 
   isRunning(): boolean {
     return this.running;
@@ -47,10 +49,19 @@ export class WebAudioEngine implements AudioEngine {
     this.leftOsc.connect(this.leftGain).connect(this.merger, 0, 0);
     this.rightOsc.connect(this.rightGain).connect(this.merger, 0, 1);
 
-    this.merger.connect(ctx.destination);
+    // Master volume
+    this.masterGain = new GainNode(ctx, { gain: 0 });
+    this.merger.connect(this.masterGain).connect(ctx.destination);
 
     this.leftOsc.start();
     this.rightOsc.start();
+
+    // Smooth fade-in to target volume
+    const now = ctx.currentTime;
+    const target = Math.max(0, Math.min(1, this.volume));
+    this.masterGain.gain.cancelScheduledValues(now);
+    this.masterGain.gain.setValueAtTime(0, now);
+    this.masterGain.gain.linearRampToValueAtTime(target, now + 0.05);
 
     this.running = true;
   }
@@ -59,6 +70,15 @@ export class WebAudioEngine implements AudioEngine {
     if (!this.ctx) return;
 
     try {
+      // Smooth fade-out before stopping oscillators
+      if (this.masterGain) {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+        this.masterGain.gain.linearRampToValueAtTime(0, now + 0.05);
+        // wait for fade-out
+        await new Promise((r) => setTimeout(r, 60));
+      }
       if (this.leftOsc) {
         this.leftOsc.stop();
         this.leftOsc.disconnect();
@@ -70,6 +90,7 @@ export class WebAudioEngine implements AudioEngine {
       if (this.leftGain) this.leftGain.disconnect();
       if (this.rightGain) this.rightGain.disconnect();
       if (this.merger) this.merger.disconnect();
+      if (this.masterGain) this.masterGain.disconnect();
     } catch {
       // ignore cleanup errors
     }
@@ -79,7 +100,22 @@ export class WebAudioEngine implements AudioEngine {
     this.leftGain = undefined;
     this.rightGain = undefined;
     this.merger = undefined;
+    this.masterGain = undefined;
 
     this.running = false;
+  }
+
+  setVolume(volume: number): void {
+    this.volume = Math.max(0, Math.min(1, volume));
+    if (this.masterGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+      this.masterGain.gain.linearRampToValueAtTime(this.volume, now + 0.05);
+    }
+  }
+
+  getVolume(): number {
+    return this.volume;
   }
 }

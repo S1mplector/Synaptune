@@ -21,6 +21,7 @@ export function App() {
   const audioEngine = useMemo(() => new WebAudioEngine(), []);
   const startPlayback = useMemo(() => makeStartPlayback(audioEngine), [audioEngine]);
   const stopPlayback = useMemo(() => makeStopPlayback(audioEngine), [audioEngine]);
+  const [volume, setVolume] = useState<number>(() => 0.5);
 
   const [id, setId] = useState<string>(() => crypto.randomUUID());
   const [label, setLabel] = useState<string>('Focus Session');
@@ -43,6 +44,19 @@ export function App() {
     // Load persisted sessions on mount
     listSessions().then(setSessions).catch(() => {});
   }, [listSessions]);
+
+  useEffect(() => {
+    // Initialize and keep engine volume in sync
+    try {
+      setVolume(audioEngine.getVolume());
+    } catch {}
+  }, [audioEngine]);
+
+  useEffect(() => {
+    try {
+      audioEngine.setVolume(volume);
+    } catch {}
+  }, [audioEngine, volume]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -116,6 +130,17 @@ export function App() {
             step={0.1}
             value={rightHz}
             onChange={(e) => setRightHz(parseFloat(e.target.value))}
+          />
+        </label>
+        <label>
+          <div>Master Volume: {(volume * 100).toFixed(0)}%</div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
           />
         </label>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
