@@ -3,6 +3,7 @@ import { makeStartPlayback, makeStopPlayback, computeLeftRightFromCenterBeat } f
 import { MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ, MIN_BEAT_FREQUENCY_HZ, MAX_BEAT_FREQUENCY_HZ } from '@simbeat/domain';
 import { WebAudioEngine } from '@simbeat/infrastructure';
 import './styles.css';
+import { Visualizer } from './components/Visualizer';
 
 export function MinimalApp() {
   const clamp = (n: number, min: number, max: number) =>
@@ -202,6 +203,9 @@ export function MinimalApp() {
           </div>
         </div>
       </div>
+
+      {/* Centered visualizer overlay */}
+      <Visualizer leftHz={leftHz} rightHz={rightHz} running={running} />
 
       <div className="minux-content">
         {/* Left */}
