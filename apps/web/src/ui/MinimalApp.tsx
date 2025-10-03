@@ -148,49 +148,58 @@ export function MinimalApp() {
     <div className="minux-root">
       <div className="topbar">
         <div className="topbar-inner">
-          <div className="brand">Synaptune</div>
-          <div className="spacer" />
-          {/* Mini volume/pan controls */}
-          <div className="micro-mixer">
-            <label title="Volume">
-              <span>Vol</span>
-              <input
-                className="micro-slider"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(e) => {
-                  const v = Math.min(1, Math.max(0, parseFloat(e.target.value)));
-                  setVolume(v);
-                  try { audioEngine.setVolume(v); } catch {}
-                }}
-              />
-            </label>
-            <label title="Pan">
-              <span>Pan</span>
-              <input
-                className="micro-slider"
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={pan}
-                onChange={(e) => {
-                  const p = Math.min(1, Math.max(-1, parseFloat(e.target.value)));
-                  setPan(p);
-                  try { audioEngine.setPan(p); } catch {}
-                }}
-              />
-            </label>
+          {/* Left: brand (vertically centered, aligned left) */}
+          <div className="topbar-left">
+            <div className="brand">Synaptune</div>
           </div>
-          <button
-            className="playbtn"
-            onClick={() => (running ? stopPlayback() : startPlayback({ leftHz, rightHz }))}
-          >
-            {running ? 'Stop' : 'Play'}
-          </button>
+
+          {/* Center: micro mixer (centered horizontally) */}
+          <div className="topbar-center">
+            <div className="micro-mixer">
+              <label title="Volume">
+                <span>Vol</span>
+                <input
+                  className="micro-slider"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(e) => {
+                    const v = Math.min(1, Math.max(0, parseFloat(e.target.value)));
+                    setVolume(v);
+                    try { audioEngine.setVolume(v); } catch {}
+                  }}
+                />
+              </label>
+              <label title="Pan">
+                <span>Pan</span>
+                <input
+                  className="micro-slider"
+                  type="range"
+                  min={-1}
+                  max={1}
+                  step={0.01}
+                  value={pan}
+                  onChange={(e) => {
+                    const p = Math.min(1, Math.max(-1, parseFloat(e.target.value)));
+                    setPan(p);
+                    try { audioEngine.setPan(p); } catch {}
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Right: transport button */}
+          <div className="topbar-right">
+            <button
+              className="playbtn"
+              onClick={() => (running ? stopPlayback() : startPlayback({ leftHz, rightHz }))}
+            >
+              {running ? 'Stop' : 'Play'}
+            </button>
+          </div>
         </div>
       </div>
 
