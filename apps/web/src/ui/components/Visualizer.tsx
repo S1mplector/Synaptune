@@ -63,15 +63,7 @@ export function Visualizer({ leftHz, rightHz, running }: VisualizerProps) {
       const beatPhase = 2 * Math.PI * beat * t;
       const envelope = 0.5 + 0.5 * Math.cos(beatPhase);
 
-      // Subtle center background to integrate with UI
-      ctx.save();
-      const bgGrad = ctx.createLinearGradient(W * 0.33, 0, W * 0.67, 0);
-      bgGrad.addColorStop(0, 'rgba(20,28,40,0)');
-      bgGrad.addColorStop(0.5, 'rgba(20,28,40,0.35)');
-      bgGrad.addColorStop(1, 'rgba(20,28,40,0)');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(W * 0.25, H * 0.1, W * 0.5, H * 0.8);
-      ctx.restore();
+      // Removed center background band to avoid any perceived rounded corners
 
       // Use compositing for nicer glow integration
       const prevComp = ctx.globalCompositeOperation;
@@ -170,78 +162,24 @@ export function Visualizer({ leftHz, rightHz, running }: VisualizerProps) {
       ctx.fillRect(centerX - glowRadius, midY - glowRadius, glowRadius * 2, glowRadius * 2);
       ctx.restore();
 
-      // Frequency bars at bottom (spectrum-like display)
-      ctx.globalCompositeOperation = 'soft-light';
-      const barCount = 32;
-      const barWidth = W / barCount;
-      const barMaxHeight = H * 0.1;
-      
-      for (let i = 0; i < barCount; i++) {
-        const x = i * barWidth;
-        const normalizedPos = i / barCount;
-        
-        // Create frequency response: peaks at left, center (beat), and right
-        let intensity = 0;
-        if (normalizedPos < 0.33) {
-          // Left channel emphasis
-          intensity = (0.33 - normalizedPos) / 0.33;
-        } else if (normalizedPos > 0.67) {
-          // Right channel emphasis
-          intensity = (normalizedPos - 0.67) / 0.33;
-        } else {
-          // Center (beat frequency)
-          const centerDist = Math.abs(normalizedPos - 0.5) / 0.17;
-          intensity = Math.max(0, 1 - centerDist);
-        }
-        
-        // Modulate by beat envelope
-        const barHeight = barMaxHeight * intensity * (0.2 + envelope * 0.4);
-        
-        // Gradient for bars
-        const barGrad = ctx.createLinearGradient(0, H, 0, H - barHeight);
-        if (normalizedPos < 0.4) {
-          barGrad.addColorStop(0, 'rgba(74,163,255,0.45)');
-          barGrad.addColorStop(1, 'rgba(74,163,255,0.15)');
-        } else if (normalizedPos > 0.6) {
-          barGrad.addColorStop(0, 'rgba(255,163,74,0.45)');
-          barGrad.addColorStop(1, 'rgba(255,163,74,0.15)');
-        } else {
-          barGrad.addColorStop(0, 'rgba(232,238,247,0.55)');
-          barGrad.addColorStop(1, 'rgba(164,217,255,0.25)');
-        }
-        
-        ctx.fillStyle = barGrad;
-        ctx.fillRect(x + 1, H - barHeight, barWidth - 2, barHeight);
-      }
+      // Spectrum bars removed for a cleaner, more ambient background
 
-      // Edge vignette to fade into page background
+      // Edge vignette to fade into page background (strengthened)
       ctx.globalCompositeOperation = 'soft-light';
-      const fadeW = W * 0.08;
+      const fadeW = W * 0.14;
       const leftFade = ctx.createLinearGradient(0, 0, fadeW, 0);
-      leftFade.addColorStop(0, 'rgba(10,14,20,0.6)');
+      leftFade.addColorStop(0, 'rgba(10,14,20,0.85)');
       leftFade.addColorStop(1, 'rgba(10,14,20,0)');
       ctx.fillStyle = leftFade;
       ctx.fillRect(0, 0, fadeW, H);
 
       const rightFade = ctx.createLinearGradient(W - fadeW, 0, W, 0);
       rightFade.addColorStop(0, 'rgba(10,14,20,0)');
-      rightFade.addColorStop(1, 'rgba(10,14,20,0.6)');
+      rightFade.addColorStop(1, 'rgba(10,14,20,0.85)');
       ctx.fillStyle = rightFade;
       ctx.fillRect(W - fadeW, 0, fadeW, H);
 
-      // Top/bottom vignette for further blending
-      const fadeH = H * 0.25;
-      const topFade = ctx.createLinearGradient(0, 0, 0, fadeH);
-      topFade.addColorStop(0, 'rgba(10,14,20,0.55)');
-      topFade.addColorStop(1, 'rgba(10,14,20,0.0)');
-      ctx.fillStyle = topFade;
-      ctx.fillRect(0, 0, W, fadeH);
-
-      const bottomFade = ctx.createLinearGradient(0, H - fadeH, 0, H);
-      bottomFade.addColorStop(0, 'rgba(10,14,20,0.0)');
-      bottomFade.addColorStop(1, 'rgba(10,14,20,0.55)');
-      ctx.fillStyle = bottomFade;
-      ctx.fillRect(0, H - fadeH, W, fadeH);
+      // Removed top/bottom vignettes to keep perfectly square edges
 
       // Restore composite mode
       ctx.globalCompositeOperation = prevComp;

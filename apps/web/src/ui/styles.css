@@ -99,5 +99,5 @@ th, td { text-align: left; padding: 0.4rem 0.25rem; border-bottom: 1px solid var
 
 /* Fixed centered visualizer behind UI */
 .visualizer-fixed { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; width: 90vw; max-width: 1400px; z-index: 0; }
-.visualizer-fixed canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+.visualizer-fixed canvas { display: block; width: 100%; height: auto; border-radius: 0; }
 
