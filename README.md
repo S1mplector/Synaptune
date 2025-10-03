@@ -32,19 +32,34 @@ Shared root configuration lives at the top-level: `tsconfig.base.json`, ESLint, 
 
 ## Getting Started
 
-1. Install dependencies (uses npm workspaces):
    ```bash
    npm install
    ```
 2. Useful scripts:
    ```bash
-   npm run build      # build all packages
+   npm run build      # build all packages (tsc -b)
    npm run typecheck  # type-check all workspaces
    npm run lint       # lint all packages
    npm run format     # format with Prettier
    ```
 
-We keep the web app minimal for now. In a later step, we'll scaffold a full Vite (React/TS) app and wire it to the application layer.
+## Web App (Vite + React)
+
+The web application is already scaffolded with Vite and wired to the Application and Domain layers via Infrastructure adapters.
+
+Run the dev server:
+```bash
+cd apps/web
+npm run dev
+```
+Then open the local URL printed by Vite (e.g. http://localhost:5173/).
+
+Build and preview the production bundle:
+```bash
+cd apps/web
+npm run build
+npm run preview
+```
 
 ## Development Workflow
 
@@ -53,3 +68,14 @@ We keep the web app minimal for now. In a later step, we'll scaffold a full Vite
 - Add adapters/implementations in `packages/infrastructure`.
 - Integrate with UI in `apps/web`.
 
+### Notes
+
+- Path aliases are defined in `tsconfig.base.json` (e.g., `@simbeat/application`).
+- The web app integrates:
+  - `WebAudioEngine` (`packages/infrastructure/src/audio/WebAudioEngine.ts`) for playback.
+  - `LocalStorageSessionRepository` for session persistence.
+- Core flows available in the UI (`apps/web/src/ui/App.tsx`):
+  - Create sessions (free mode and lock-beat mode)
+  - Presets creation
+  - Start/stop playback, live retune, volume and pan
+  - Sessions list (list/delete/clear)
