@@ -222,8 +222,7 @@ export function Visualizer({ leftHz, rightHz, running }: VisualizerProps) {
       rafRef.current = prefersReduced ? null : requestAnimationFrame(render);
     };
 
-    if (running && !prefersReduced) {
-      rafRef.current = requestAnimationFrame(render);
+    if (running && !prefersReduced) {      rafRef.current = requestAnimationFrame(render);
     }
 
     return () => {

@@ -16,6 +16,8 @@ export function MinimalApp() {
   const [running, setRunning] = useState<boolean>(false);
   const [leftHz, setLeftHz] = useState<number>(220);
   const [rightHz, setRightHz] = useState<number>(226);
+  const [leftText, setLeftText] = useState<string>('220');
+  const [rightText, setRightText] = useState<string>('226');
   const [volume, setVolume] = useState<number>(0.5);
   const [pan, setPan] = useState<number>(0);
 
@@ -57,6 +59,7 @@ export function MinimalApp() {
   const onLeftChange = (v: number) => {
     const next = clamp(v, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
     setLeftHz(next);
+    setLeftText(String(Number.isFinite(next) ? next : ''));
     if (running) audioEngine.updateFrequencies(next, rightHz);
     if (lockBeat) {
       const c = (next + rightHz) / 2;
@@ -69,6 +72,7 @@ export function MinimalApp() {
   const onRightChange = (v: number) => {
     const next = clamp(v, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
     setRightHz(next);
+    setRightText(String(Number.isFinite(next) ? next : ''));
     if (running) audioEngine.updateFrequencies(leftHz, next);
     if (lockBeat) {
       const c = (leftHz + next) / 2;
@@ -85,6 +89,8 @@ export function MinimalApp() {
       const { leftHz: l, rightHz: r } = computeLeftRightFromCenterBeat({ centerHz, beatHz });
       setLeftHz(l);
       setRightHz(r);
+      setLeftText(String(l));
+      setRightText(String(r));
       if (running) audioEngine.updateFrequencies(l, r);
     } catch {}
   }, [lockBeat, centerHz, beatHz]);
@@ -96,8 +102,8 @@ export function MinimalApp() {
       const raw = localStorage.getItem(key);
       if (raw) {
         const s = JSON.parse(raw) as any;
-        if (typeof s.leftHz === 'number') setLeftHz(clamp(s.leftHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ));
-        if (typeof s.rightHz === 'number') setRightHz(clamp(s.rightHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ));
+        if (typeof s.leftHz === 'number') { const v = clamp(s.leftHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ); setLeftHz(v); setLeftText(String(v)); }
+        if (typeof s.rightHz === 'number') { const v = clamp(s.rightHz, MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ); setRightHz(v); setRightText(String(v)); }
         if (typeof s.volume === 'number') setVolume(Math.min(1, Math.max(0, s.volume)));
         if (typeof s.pan === 'number') setPan(Math.min(1, Math.max(-1, s.pan)));
         if (typeof s.lockBeat === 'boolean') setLockBeat(s.lockBeat);
@@ -144,6 +150,18 @@ export function MinimalApp() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [leftHz, rightHz, running]);
+
+  // Commit helpers for text inputs
+  const commitLeftFromText = () => {
+    const v = parseFloat(leftText);
+    if (Number.isFinite(v)) onLeftChange(v);
+    else setLeftText(String(leftHz));
+  };
+  const commitRightFromText = () => {
+    const v = parseFloat(rightText);
+    if (Number.isFinite(v)) onRightChange(v);
+    else setRightText(String(rightHz));
+  };
 
   return (
     <div className="minux-root">
@@ -214,13 +232,12 @@ export function MinimalApp() {
           <div className="ear-value">{leftHz.toFixed(2)} Hz</div>
           <input
             className="hz-input no-spin"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={MIN_FREQUENCY_HZ}
-            max={MAX_FREQUENCY_HZ}
-            step={0.01}
-            value={leftHz}
-            onChange={(e) => onLeftChange(parseFloat(e.target.value))}
+            value={leftText}
+            onChange={(e) => setLeftText(e.target.value)}
+            onBlur={commitLeftFromText}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
             placeholder={`${MIN_FREQUENCY_HZ} - ${MAX_FREQUENCY_HZ}`}
           />
         </div>
@@ -231,13 +248,12 @@ export function MinimalApp() {
           <div className="ear-value">{rightHz.toFixed(2)} Hz</div>
           <input
             className="hz-input no-spin"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={MIN_FREQUENCY_HZ}
-            max={MAX_FREQUENCY_HZ}
-            step={0.01}
-            value={rightHz}
-            onChange={(e) => onRightChange(parseFloat(e.target.value))}
+            value={rightText}
+            onChange={(e) => setRightText(e.target.value)}
+            onBlur={commitRightFromText}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
             placeholder={`${MIN_FREQUENCY_HZ} - ${MAX_FREQUENCY_HZ}`}
           />
         </div>
